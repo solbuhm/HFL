@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>행금생 2024-01 - NotebookLM - Quiz Export</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
+        :root {
+            --bg: #f6f1e7;
+            --bg-deep: #efe4d6;
+            --ink: #171717;
+            --muted: #5b5b5b;
+            --accent: #d3542c;
+            --accent-light: #ff8f5a;
+            --accent-dark: #b14320;
+            --teal: #1f6f78;
+            --card: #fff7ef;
+            --stroke: #e3d6c5;
+            --shadow: 0 18px 40px rgba(23, 23, 23, 0.12);
+            --radius-sm: 10px;
+            --radius-md: 12px;
+            --radius-lg: 14px;
+            --radius-xl: 18px;
+            --radius-2xl: 22px;
+            --space-1: 6px;
+            --space-2: 8px;
+            --space-3: 10px;
+            --space-4: 12px;
+            --space-5: 14px;
+            --space-6: 16px;
+            --space-7: 18px;
+            --space-8: 20px;
+            --space-9: 24px;
+            --space-10: 32px;
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-body: 'IBM Plex Sans', sans-serif;
+            --error: #b54832;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background:
+                radial-gradient(240px 140px at 10% -10%, #ffd2b9 0%, transparent 70%),
+                radial-gradient(220px 160px at 90% 0%, #cfe7e6 0%, transparent 65%),
+                linear-gradient(180deg, var(--bg) 0%, var(--bg-deep) 100%);
+            color: var(--ink);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .quiz-container {
+            width: 100%;
+            max-width: 800px;
+            padding: var(--space-10) var(--space-8);
+            box-sizing: border-box;
+            background: var(--card);
+            border-radius: var(--radius-2xl);
+            border: 1px solid var(--stroke);
+            box-shadow: var(--shadow);
+        }
+
+        .progress-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .progress-text {
+            color: var(--muted);
+            font-size: 0.9em;
+        }
+
+        .status-bar {
+            display: flex;
+            gap: 16px;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-correct { color: var(--teal); }
+        .status-wrong { color: var(--error); }
+
+        .question-text {
+            font-family: var(--font-display);
+            font-size: 1.5em;
+            font-weight: 600;
+            margin-bottom: 32px;
+            line-height: 1.4;
+        }
+
+        .options-list {
+            list-style: none;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .option-item {
+            background-color: #fff;
+            border: 1px solid var(--stroke);
+            padding: var(--space-4) var(--space-6);
+            border-radius: var(--radius-lg);
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .option-item:hover:not(.selected) {
+            background-color: var(--card);
+            transform: translateY(-1px);
+            box-shadow: 0 10px 18px rgba(23, 23, 23, 0.12);
+        }
+
+        .option-item.selected.correct {
+            background-color: rgba(31, 111, 120, 0.12);
+            border-color: var(--teal);
+        }
+
+        .option-item.selected.incorrect {
+            background-color: rgba(181, 72, 50, 0.12);
+            border-color: var(--error);
+        }
+
+        .option-item.revealed-correct {
+            border-color: rgba(31, 111, 120, 0.5);
+            box-shadow: inset 0 0 0 1px rgba(31, 111, 120, 0.16);
+        }
+
+        .option-label {
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .feedback-state {
+            font-weight: bold;
+            font-size: 0.9em;
+            display: none;
+        }
+
+        .selected .feedback-state {
+            display: block;
+        }
+
+        .revealed-correct .feedback-state {
+            display: block;
+        }
+
+        .correct .feedback-state { color: var(--teal); }
+        .incorrect .feedback-state { color: var(--error); }
+        .revealed-correct .feedback-state { color: var(--teal); }
+
+        .rationale {
+            font-size: 0.95em;
+            color: var(--muted);
+            margin-top: 4px;
+            line-height: 1.5;
+            display: none;
+        }
+
+        .selected .rationale {
+            display: block;
+        }
+
+        .revealed-correct .rationale {
+            display: block;
+        }
+        .hint-toggle {
+            border: 1px solid var(--stroke);
+            color: var(--muted);
+            cursor: pointer;
+            padding: var(--space-2) var(--space-6);
+            border-radius: var(--radius-md);
+            background-color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9em;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .hint-toggle:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 18px rgba(23, 23, 23, 0.12);
+        }
+
+        .hint-content {
+            margin-top: 32px;
+            padding: var(--space-6);
+            background-color: #fff;
+            border: 1px solid var(--stroke);
+            border-radius: var(--radius-lg);
+            font-size: 0.95em;
+            color: var(--muted);
+            display: none;
+            align-items: flex-start;
+            gap: 16px;
+        }
+
+        .hint-content.active {
+            display: flex;
+        }
+
+        .hint-icon-box {
+            color: var(--accent-dark);
+            font-size: 1.2em;
+            margin-top: -2px;
+        }
+
+        .navigation {
+            margin-top: 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            border-radius: var(--radius-md);
+            padding: var(--space-2) var(--space-7);
+            font-size: 0.95em;
+            font-weight: 500;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .btn-prev {
+            background-color: #fff;
+            color: var(--ink);
+            border-color: var(--stroke);
+        }
+
+        .btn-prev:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 18px rgba(23, 23, 23, 0.12);
+        }
+
+        .btn-next {
+            background: linear-gradient(90deg, var(--accent), var(--accent-light));
+            color: #fff;
+        }
+
+        .btn-next:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 18px rgba(23, 23, 23, 0.12);
+        }
+
+        .btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .results-screen {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-8);
+        }
+
+        .results-title {
+            font-family: var(--font-display);
+            font-size: 2.1em;
+            margin: 0;
+        }
+
+        .results-subtitle {
+            color: var(--muted);
+            margin: 0;
+            font-size: 1em;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--space-6);
+        }
+
+        .result-card {
+            padding: var(--space-6);
+            border-radius: var(--radius-xl);
+            background: #fff;
+            border: 1px solid var(--stroke);
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-3);
+        }
+
+        .result-label {
+            color: var(--muted);
+            font-size: 0.95em;
+        }
+
+        .result-value {
+            font-size: 2em;
+            font-family: var(--font-display);
+        }
+
+        .result-metrics {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-2);
+            color: var(--muted);
+            font-size: 0.95em;
+        }
+
+        .results-actions {
+            display: flex;
+            gap: var(--space-4);
+            flex-wrap: wrap;
+        }
+
+        .btn-ghost {
+            background-color: transparent;
+            border: 1px solid var(--stroke);
+            color: var(--ink);
+        }
+
+        .hidden { display: none; }
+
+        @media (max-width: 900px) {
+            .quiz-container {
+                margin: var(--space-8);
+                max-width: 100%;
+            }
+        }
+
+        @media (max-width: 720px) {
+            .quiz-container {
+                padding: var(--space-8) var(--space-6);
+            }
+
+            .question-text {
+                font-size: 1.3em;
+            }
+
+            .option-item {
+                padding: var(--space-4);
+            }
+        }
+
+        @media (max-width: 520px) {
+            body {
+                align-items: flex-start;
+            }
+
+            .quiz-container {
+                margin: var(--space-6);
+                padding: var(--space-7) var(--space-5);
+            }
+
+            .progress-container {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: var(--space-3);
+            }
+
+            .navigation {
+                flex-direction: column;
+                align-items: stretch;
+                gap: var(--space-4);
+            }
+
+            .nav-buttons {
+                width: 100%;
+            }
+
+            .btn {
+                width: 100%;
+            }
+
+            .hint-toggle {
+                justify-content: space-between;
+            }
+
+            .results-actions {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="quiz-container">
+        <div id="quiz-content">
+            <!-- Dynamic Content -->
+        </div>
+        <div id="results-content" class="hidden"></div>
+
+        <div id="hint-box" class="hint-content">
+            <div class="hint-icon-box">💡</div>
+            <div id="hint-text"></div>
+        </div>
+
+        <div class="navigation">
+            <button id="hint-toggle" class="hint-toggle">
+                <span>Hint</span>
+                <span id="hint-icon-arrow">▼</span>
+            </button>
+            <div class="nav-buttons">
+                <button id="prev-btn" class="btn btn-prev">Previous</button>
+                <button id="next-btn" class="btn btn-next">Next</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const quizData = [{"answerOptions":[{"isCorrect":false,"rationale":"국가 책임론은 금융문맹인 부모의 무책임한 태도 중 하나로 제시된 사례일 뿐 그린스펀의 주장이 아닙니다.","text":"금융 지식이 없으면 경제적 독립이 불가능하므로 반드시 국가가 책임져야 한다."},{"isCorrect":false,"rationale":"해당 내용은 가난이 대물림되는 일반적인 오해로 제시되었으며 그린스펀의 핵심 메시지는 아닙니다.","text":"금융 문맹은 주로 교육 기회의 부족과 인맥의 부재에서 비롯된다."},{"isCorrect":false,"rationale":"본문에서는 문자를 모르는 것은 불편함을 초래하지만, 금융을 모르는 것은 생존의 문제로 보았습니다.","text":"문자를 모르는 것보다 금융을 모르는 것이 생활에 더 큰 불편을 준다."},{"isCorrect":true,"rationale":"금융 이해력이 현대 사회에서 생존을 위한 필수적인 역량임을 극단적으로 비유하여 강조한 표현입니다.","text":"문자를 모르면 생활이 불편하지만 금융을 모르면 생존이 불가능하다."}],"hint":"문맹과 금융문맹을 비교하며 생존과 연결 지어 생각해보세요.","question":"앨런 그린스펀 전 FRB 의장이 강조한 '금융문맹'의 위험성에 대한 설명으로 가장 적절한 것은 무엇입니까?"},{"answerOptions":[{"isCorrect":false,"rationale":"금융지식은 상품, 수익, 위험, 세금 등을 이해하는 기본 요소입니다.","text":"금융지식"},{"isCorrect":false,"rationale":"금융태도는 절약 습관이나 신용 관리 등 금융에 임하는 심리적 태도를 포함합니다.","text":"금융태도"},{"isCorrect":true,"rationale":"인맥은 가난의 대물림 원인으로 오해받는 요소 중 하나일 뿐, 공식적인 금융역량 구성 요소에는 포함되지 않습니다.","text":"금융인맥"},{"isCorrect":false,"rationale":"금융행위는 예산 수립, 소비, 투자 등 실제로 실천하는 능력을 의미합니다.","text":"금융행위"}],"hint":"OECD INFE에서 정의한 금융이해력의 구성 항목을 떠올려 보세요.","question":"금융역량(Financial Competence)을 구성하는 세 가지 핵심 요소가 아닌 것은 무엇입니까?"},{"answerOptions":[{"isCorrect":true,"rationale":"그래프상 $30$대가 $69.0$점으로 전 연령대 중 가장 높은 금융이해력을 보였습니다.","text":"연령별 조사에서 30대의 금융이해력 점수가 가장 높게 나타났다."},{"isCorrect":false,"rationale":"조사 결과 금융지식($75.5$점)은 높으나 금융행위($65.8$점)와 금융태도($52.4$점)는 그에 미치지 못했습니다.","text":"금융지식에 비해 금융행위와 금융태도 점수가 상대적으로 높다."},{"isCorrect":false,"rationale":"한국은 $66.5$점으로 OECD $20$개국 평균인 $63.0$점보다 높게 나타났습니다.","text":"한국의 금융이해력 점수는 OECD 평균보다 낮은 수준이다."},{"isCorrect":false,"rationale":"$70$대는 $61.1$점으로 성인 전체 평균인 $66.5$점보다 낮습니다.","text":"70대의 금융이해력은 지식 수준이 높아 전체 평균을 상회한다."}],"hint":"한국의 점수와 OECD 평균, 그리고 연령별 최고점 그래프를 확인해 보세요.","question":"2022년 전 국민 금융이해력 조사 결과에 대한 설명으로 옳은 것은 무엇입니까?"},{"answerOptions":[{"isCorrect":false,"rationale":"재화 매매의 대가로 사용되는 돈의 가장 기본적인 기능입니다.","text":"교환 수단"},{"isCorrect":false,"rationale":"객관적 수치로 가치를 비교할 수 있게 해주는 기능입니다.","text":"계산 단위"},{"isCorrect":true,"rationale":"돈이 사회적 영향력을 가질 수는 있으나, 경제학적으로 정의된 돈의 본질적인 기능은 아닙니다.","text":"권력의 상징"},{"isCorrect":false,"rationale":"부동산이나 귀중품처럼 가치를 보관하고 상속할 수 있게 하는 기능입니다.","text":"가치저장물"}],"hint":"경제 활동에서 돈이 수단으로서 수행하는 객관적인 역할들을 생각해보세요.","question":"본문에서 언급된 '돈의 기능' 세 가지에 포함되지 않는 것은 무엇입니까?"},{"answerOptions":[{"isCorrect":true,"rationale":"교환의 매개체가 되려면 가치가 안정적이어야 하는데, 암호화폐는 변동성이 너무 커서 일상적인 사용이 불가능합니다.","text":"가치 변동성이 너무 커서 가격 척도로 쓰기 부적절하다."},{"isCorrect":false,"rationale":"비트코인처럼 발행량이 제한된 경우도 있으나, 핵심 문제는 일상생활에서의 가치 불안정성입니다.","text":"발행 수량이 무제한이라 인플레이션에 취약하다."},{"isCorrect":false,"rationale":"블록체인 기술 자체는 자료를 분산 저장하여 응용 가능성이 높다고 평가받습니다.","text":"블록체인 기술의 보안성이 낮기 때문이다."},{"isCorrect":false,"rationale":"암호화폐는 중앙기관을 거치지 않는 P2P 방식의 분산 저장을 특징으로 합니다.","text":"중앙기관의 통제를 받기 때문이다."}],"hint":"화폐가 교환 수단으로 기능하기 위해 갖춰야 할 '가치의 안정성'을 떠올려 보세요.","question":"암호화폐(가상화폐)가 현재 일상적인 통화로 사용되기 어려운 가장 큰 이유는 무엇입니까?"},{"answerOptions":[{"isCorrect":false,"rationale":"이는 돈의 탄생 배경에 대한 설명이지 용어의 어원은 아닙니다.","text":"신뢰를 바탕으로 한 사회적 합의"},{"isCorrect":false,"rationale":"이는 화폐 주조와 관련된 설명이며, Finance 단어 자체의 어원은 아닙니다.","text":"금속을 녹여 화폐를 주조하다"},{"isCorrect":true,"rationale":"프랑스어 'fin'(종료)에서 유래하여 지불하거나 채무를 갚는다는 의미를 담고 있습니다.","text":"지불을 완료하여 채무를 끝내다"},{"isCorrect":false,"rationale":"축적보다는 거래와 결제의 종결에 어원적 뿌리가 있습니다.","text":"풍요로운 삶을 위한 축적"}],"hint":"프랑스어 단어 'fin'의 의미를 생각해보세요.","question":"금융(Finance)이라는 용어의 어원적 의미와 가장 관련이 깊은 것은 무엇입니까?"},{"answerOptions":[{"isCorrect":false,"rationale":"이름의 의미는 금속 함량보다는 사용의 보편성과 평등함에 집중되어 있습니다.","text":"금속 함유량이 가장 높은 화폐"},{"isCorrect":false,"rationale":"화폐의 기능 중 하나인 계산 단위에 해당하지만 이름의 직접적인 풀이는 아닙니다.","text":"물건의 가격을 정하는 기준"},{"isCorrect":true,"rationale":"유통의 편의와 가치의 일관성을 지향하며 모든 사람이 보편적으로 사용한다는 뜻을 담고 있습니다.","text":"언제나 평등하게 사용하는 보배"},{"isCorrect":false,"rationale":"상평통보는 왕실의 전유물이 아닌 보편적인 유통을 목적으로 했습니다.","text":"왕실의 권위를 상징하는 보배"}],"hint":"한자 '상(常)'과 '평(平)'의 의미를 조합해 보세요.","question":"조선시대의 대표적 화폐인 '상평통보(常平通寶)'에 담긴 의미로 가장 적절한 것은?"},{"answerOptions":[{"isCorrect":false,"rationale":"자산 거품은 실질 가치보다 시장 가격이 폭등한 상태를 말합니다.","text":"자산 거품(Asset Bubble)"},{"isCorrect":true,"rationale":"정부가 화폐를 독점 발행하면서 얻는 액면가와 비용의 차액을 뜻합니다.","text":"주조차익(Seigniorage)"},{"isCorrect":false,"rationale":"구매력은 화폐로 살 수 있는 재화의 양을 의미합니다.","text":"구매력(Purchasing Power)"},{"isCorrect":false,"rationale":"법화는 법적 강제력이 부여되어 통용되는 화폐 자체를 의미합니다.","text":"법화(Legal Tender)"}],"hint":"정부가 화폐 발행을 통해 얻는 경제적 이득을 부르는 용어입니다.","question":"화폐의 액면가(Face Value)와 제조원가(Cost)의 차이에서 발생하는 이익을 무엇이라고 합니까?"},{"answerOptions":[{"isCorrect":false,"rationale":"이들은 세계 경제에서 보편적으로 수용되는 기축통화입니다.","text":"미국 달러, EU 유로, 일본 옌 등이 대표적인 사례이다."},{"isCorrect":false,"rationale":"달러, 유로, 파운드, 옌이 국제 결제에서 압도적인 비중을 차지하고 있다는 사실은 본문에 명시되어 있습니다.","text":"국제 결제의 약 $80\\%$를 주요 4대 기축통화가 담당한다."},{"isCorrect":false,"rationale":"기축통화의 정의를 정확하게 설명하고 있습니다.","text":"국제 결제에서 보편적으로 인정되는 화폐를 의미한다."},{"isCorrect":true,"rationale":"기축통화는 법적 약정이 아니라 거래에서 보편적으로 인정됨에 따라 형성된 것입니다.","text":"국제법이나 조약에 의해 엄격히 4개로 고정되어 있다."}],"hint":"기축통화가 정해지는 방식이 법적 강제성인지, 시장의 신뢰인지 생각해보세요.","question":"기축통화(Key Currency)에 대한 설명으로 옳지 않은 것은 무엇입니까?"},{"answerOptions":[{"isCorrect":false,"rationale":"이것은 법화의 신뢰와 관련된 부분이며 이자의 정의와는 무관합니다.","text":"화폐를 위조하지 않겠다는 정부의 약속"},{"isCorrect":false,"rationale":"이는 돈의 계산 단위 기능을 설명하는 것에 가깝습니다.","text":"경제 활동 참여자들이 합의한 객관적 수치"},{"isCorrect":true,"rationale":"현재의 돈을 미래로 보낼 때 발생하는 시간적 보상이며 사용에 대한 비용으로 정의됩니다.","text":"돈의 가격이 아니라 돈을 빌려 쓴 대가인 '사용료'"},{"isCorrect":false,"rationale":"인플레이션 보상이 포함될 수 있으나 본질적인 정의는 아닙니다.","text":"돈의 가치가 하락한 만큼에 대한 보상금"}],"hint":"돈을 물건처럼 빌려 쓴다고 가정할 때 내야 하는 비용이 무엇인지 생각해보세요.","question":"본문에서 설명하는 '돈의 시간가치(Time Value of Money)'에 근거할 때, 이자(Interest)의 정의로 가장 적절한 것은?"}];
+        let currentIndex = 0;
+        let mode = 'quiz';
+        let state = quizData.map(() => ({ selectedIndex: null, hintVisible: false }));
+
+        function getStats() {
+            const answered = state.filter((s) => s.selectedIndex !== null).length;
+            const correct = state.filter((s, i) => s.selectedIndex !== null && quizData[i].answerOptions[s.selectedIndex].isCorrect).length;
+            const wrong = state.filter((s, i) => s.selectedIndex !== null && !quizData[i].answerOptions[s.selectedIndex].isCorrect).length;
+            const skipped = quizData.length - answered;
+            const accuracy = answered > 0 ? Math.round((correct / answered) * 100) : 0;
+            return { answered, correct, wrong, skipped, accuracy };
+        }
+
+        function shuffleAnswers() {
+            quizData.forEach((q) => {
+                for (let i = q.answerOptions.length - 1; i > 0; i -= 1) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [q.answerOptions[i], q.answerOptions[j]] = [q.answerOptions[j], q.answerOptions[i]];
+                }
+            });
+        }
+
+        function shuffleQuestions() {
+            for (let i = quizData.length - 1; i > 0; i -= 1) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [quizData[i], quizData[j]] = [quizData[j], quizData[i]];
+            }
+        }
+
+        function resetState() {
+            state = quizData.map(() => ({ selectedIndex: null, hintVisible: false }));
+        }
+
+        function renderQuestion() {
+            const q = quizData[currentIndex];
+            const s = state[currentIndex];
+            const content = document.getElementById('quiz-content');
+            const results = document.getElementById('results-content');
+            const hintBox = document.getElementById('hint-box');
+            const nav = document.querySelector('.navigation');
+            const nextBtn = document.getElementById('next-btn');
+            const prevBtn = document.getElementById('prev-btn');
+
+            let optionsHtml = '';
+            const correctIndex = q.answerOptions.findIndex((o) => o.isCorrect);
+            const selectedCorrect = s.selectedIndex !== null && q.answerOptions[s.selectedIndex].isCorrect;
+            q.answerOptions.forEach((opt, idx) => {
+                const isSelected = s.selectedIndex === idx;
+                const statusClass = isSelected ? (opt.isCorrect ? 'correct' : 'incorrect') : '';
+                const selectedClass = isSelected ? 'selected' : '';
+                const revealCorrect = (s.selectedIndex !== null && !selectedCorrect && opt.isCorrect) || (mode === 'review' && opt.isCorrect);
+                const revealClass = revealCorrect ? 'revealed-correct' : '';
+
+                optionsHtml += `
+                    <li class="option-item ${selectedClass} ${statusClass} ${revealClass}" onclick="selectOption(${idx})">
+                        <div class="option-label">
+                            <span>${String.fromCharCode(65 + idx)}. ${opt.text}</span>
+                        </div>
+                        <div class="feedback-state">
+                            ${opt.isCorrect ? '✓ Right answer' : '✕ Not quite'}
+                        </div>
+                        ${opt.rationale ? '<div class="rationale">' + opt.rationale + '</div>' : ''}
+                    </li>
+                `;
+            });
+
+            const stats = getStats();
+
+            content.innerHTML = `
+                <div class="progress-container">
+                    <div class="progress-text">${currentIndex + 1} / ${quizData.length}</div>
+                    <div class="status-bar">
+                        <div class="status-item status-correct">
+                            <span>✓</span>
+                            <span>${stats.correct}</span>
+                        </div>
+                        <div class="status-item status-wrong">
+                            <span>✕</span>
+                            <span>${stats.wrong}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="question-text">${q.question}</div>
+                <ul class="options-list">
+                    ${optionsHtml}
+                </ul>
+            `;
+
+            // Update Hint Box
+            const hintText = document.getElementById('hint-text');
+            hintText.innerText = q.hint || 'No hint available for this question.';
+            if (s.hintVisible) {
+                hintBox.classList.add('active');
+            } else {
+                hintBox.classList.remove('active');
+            }
+
+            results.classList.add('hidden');
+            content.classList.remove('hidden');
+            hintBox.classList.remove('hidden');
+            nav.classList.remove('hidden');
+
+            prevBtn.disabled = currentIndex === 0;
+            nextBtn.disabled = false;
+            if (mode === 'review') {
+                nextBtn.innerText = currentIndex === quizData.length - 1 ? 'Back to Results' : 'Next';
+            } else {
+                nextBtn.innerText = currentIndex === quizData.length - 1 ? 'Finish' : 'Next';
+            }
+            document.getElementById('hint-icon-arrow').innerText = s.hintVisible ? '▲' : '▼';
+        }
+
+        function selectOption(idx) {
+            if (mode !== 'quiz') return;
+            if (state[currentIndex].selectedIndex !== null) return; // Prevent re-selection
+            state[currentIndex].selectedIndex = idx;
+            renderQuestion();
+        }
+
+        function toggleHint() {
+            if (mode === 'results') return;
+            state[currentIndex].hintVisible = !state[currentIndex].hintVisible;
+            renderQuestion();
+        }
+
+        function renderResults() {
+            const stats = getStats();
+            const content = document.getElementById('quiz-content');
+            const results = document.getElementById('results-content');
+            const hintBox = document.getElementById('hint-box');
+            const nav = document.querySelector('.navigation');
+
+            const score = `${stats.correct} / ${quizData.length}`;
+
+            results.innerHTML = `
+                <div class="results-screen">
+                    <div>
+                        <h1 class="results-title">You did it! Quiz Complete.</h1>
+                        <p class="results-subtitle">Review your score or take another run.</p>
+                    </div>
+                    <div class="results-grid">
+                        <div class="result-card">
+                            <div class="result-label">Score</div>
+                            <div class="result-value">${score}</div>
+                        </div>
+                        <div class="result-card">
+                            <div class="result-label">Accuracy</div>
+                            <div class="result-value">${stats.accuracy}%</div>
+                        </div>
+                        <div class="result-card">
+                            <div class="result-metrics">
+                                <div>Right <strong>${stats.correct}</strong></div>
+                                <div>Wrong <strong>${stats.wrong}</strong></div>
+                                <div>Skipped <strong>${stats.skipped}</strong></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="results-actions">
+                        <button id="review-btn" class="btn btn-ghost">Review Quiz</button>
+                        <button id="retake-btn" class="btn btn-next">Retake Quiz</button>
+                    </div>
+                </div>
+            `;
+
+            content.classList.add('hidden');
+            results.classList.remove('hidden');
+            hintBox.classList.add('hidden');
+            nav.classList.add('hidden');
+
+            document.getElementById('review-btn').onclick = () => {
+                mode = 'review';
+                currentIndex = 0;
+                renderQuestion();
+            };
+
+            document.getElementById('retake-btn').onclick = () => {
+                mode = 'quiz';
+                currentIndex = 0;
+                shuffleQuestions();
+                shuffleAnswers();
+                resetState();
+                renderQuestion();
+            };
+        }
+
+        document.getElementById('prev-btn').onclick = () => {
+            if (mode === 'results') return;
+            if (currentIndex > 0) {
+                currentIndex--;
+                renderQuestion();
+            }
+        };
+
+        document.getElementById('next-btn').onclick = () => {
+            if (mode === 'results') return;
+            if (mode === 'review') {
+                if (currentIndex < quizData.length - 1) {
+                    currentIndex++;
+                    renderQuestion();
+                } else {
+                    mode = 'results';
+                    renderResults();
+                }
+                return;
+            }
+            if (currentIndex < quizData.length - 1) {
+                currentIndex++;
+                renderQuestion();
+            } else {
+                mode = 'results';
+                renderResults();
+            }
+        };
+
+        document.getElementById('hint-toggle').onclick = toggleHint;
+
+        renderQuestion();
+    </script>
+</body>
+</html>

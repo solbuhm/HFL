@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>행금생 2024-01 - NotebookLM - Flashcards Export</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
+        :root {
+            --bg: #f6f1e7;
+            --bg-deep: #efe4d6;
+            --ink: #171717;
+            --muted: #5b5b5b;
+            --accent: #d3542c;
+            --accent-light: #ff8f5a;
+            --accent-dark: #b14320;
+            --teal: #1f6f78;
+            --card: #fff7ef;
+            --stroke: #e3d6c5;
+            --shadow: 0 18px 40px rgba(23, 23, 23, 0.12);
+            --radius-sm: 10px;
+            --radius-md: 12px;
+            --radius-lg: 14px;
+            --radius-xl: 18px;
+            --radius-2xl: 22px;
+            --space-1: 6px;
+            --space-2: 8px;
+            --space-3: 10px;
+            --space-4: 12px;
+            --space-5: 14px;
+            --space-6: 16px;
+            --space-7: 18px;
+            --space-8: 20px;
+            --space-9: 24px;
+            --space-10: 32px;
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-body: 'IBM Plex Sans', sans-serif;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background:
+                radial-gradient(240px 140px at 10% -10%, #ffd2b9 0%, transparent 70%),
+                radial-gradient(220px 160px at 90% 0%, #cfe7e6 0%, transparent 65%),
+                linear-gradient(180deg, var(--bg) 0%, var(--bg-deep) 100%);
+            color: var(--ink);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 640px;
+            padding: var(--space-8);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            justify-content: center;
+        }
+
+        .card-container {
+            perspective: 1000px;
+            width: 100%;
+            height: 400px;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .card {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
+            border-radius: var(--radius-2xl);
+            box-shadow: var(--shadow);
+        }
+
+        .card.flipped {
+            transform: rotateY(180deg);
+        }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: var(--space-10);
+            box-sizing: border-box;
+            background-color: var(--card);
+            border: 1px solid var(--stroke);
+            border-radius: var(--radius-2xl);
+            text-align: center;
+            font-size: 1.35em;
+            line-height: 1.5;
+        }
+
+        .card-back {
+            transform: rotateY(180deg);
+            background-color: var(--card);
+        }
+
+        .card-content {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow-y: auto;
+            width: 100%;
+        }
+
+        .action-hint {
+            margin-top: var(--space-6);
+            font-size: 0.8rem;
+            color: var(--teal);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            pointer-events: none;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: 760px;
+            margin-top: var(--space-9);
+            padding: 0 var(--space-6);
+            gap: var(--space-8);
+        }
+
+        .nav-btn {
+            background: #fff;
+            border: 1px solid var(--stroke);
+            color: var(--ink);
+            width: 56px;
+            height: 56px;
+            border-radius: var(--radius-xl);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .nav-btn:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 18px rgba(23, 23, 23, 0.12);
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.3;
+            cursor: default;
+        }
+
+        .progress-bar {
+            flex: 1;
+            height: 6px;
+            background: var(--stroke);
+            border-radius: 3px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), var(--accent-light));
+            border-radius: 2px;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            font-size: 1em;
+            color: var(--muted);
+            min-width: 60px;
+            text-align: center;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .top-hint {
+            position: absolute;
+            top: var(--space-6);
+            color: var(--muted);
+            font-size: 0.85em;
+        }
+
+        @media (max-width: 720px) {
+            .container {
+                padding: var(--space-7);
+            }
+
+            .card-container {
+                height: 360px;
+            }
+
+            .card-face {
+                padding: var(--space-8);
+                font-size: 1.2em;
+            }
+
+            .controls {
+                gap: var(--space-6);
+                padding: 0 var(--space-4);
+            }
+
+            .nav-btn {
+                width: 48px;
+                height: 48px;
+                font-size: 1.3em;
+            }
+        }
+
+        @media (max-width: 520px) {
+            body {
+                overflow: auto;
+            }
+
+            .container {
+                height: auto;
+                min-height: 100vh;
+            }
+
+            .card-container {
+                height: 320px;
+            }
+
+            .card-face {
+                padding: var(--space-6);
+                font-size: 1.1em;
+            }
+
+            .controls {
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: var(--space-4);
+            }
+
+            .progress-bar {
+                order: 3;
+                min-width: 100%;
+            }
+
+            .progress-text {
+                order: 2;
+            }
+
+            .top-hint {
+                position: static;
+                margin-bottom: var(--space-4);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="top-hint">Press "Space" to flip, "← / →" to navigate</div>
+    <div class="container">
+        <div class="card-container" onclick="flipCard()">
+            <div class="card" id="card">
+                <div class="card-face card-front">
+                    <div class="card-content" id="front-text"></div>
+                    <div class="action-hint">See answer</div>
+                </div>
+                <div class="card-face card-back">
+                    <div class="card-content" id="back-text"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="nav-btn" id="prev-btn" onclick="prevCard(event)">←</button>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
+            </div>
+            <div class="progress-text" id="progress-text"></div>
+            <button class="nav-btn" id="next-btn" onclick="nextCard(event)">→</button>
+        </div>
+    </div>
+
+    <script>
+        const flashcards = [{"b":"금융을 이해하고 활용하는 능력이 없는 금융문맹 상태 때문이다.","f":"가난이 대물림되는 근본적인 원인은 부모의 어떤 상태 때문인가?"},{"b":"인간의 생존이 불가능하다고 경고했다.","f":"앨런 그린스펀은 금융을 모를 경우 어떤 것이 불가능하다고 경고했는가?"},{"b":"금융지식, 금융태도, 금융행위이다.","f":"금융역량(Financial Competence)을 구성하는 세 가지 핵심 요소는?"},{"b":"금융지식에 해당한다.","f":"화폐의 현재가치, 복리 계산, 인플레이션의 의미를 이해하는 능력은 금융역량 중 어디에 해당하는가?"},{"b":"금융태도에 해당한다.","f":"저축보다 소비를 선호하는 마음이나 미래보다 현재를 중시하는 인식은 금융역량 중 어디에 해당하는가?"},{"b":"금융행위에 해당한다.","f":"가계 예산을 수립하고 구입 전 지불 능력을 확인하며 기일 내에 대금을 납부하는 것은 금융역량 중 어디에 해당하는가?"},{"b":"금융교육국제협의회($INFE$)이다.","f":"OECD 산하에서 금융교육 국제 협력을 주도하는 기구의 명칭은?"},{"b":"금융감독원이다.","f":"우리나라의 금융이해력 수준을 파악하기 위해 $2$년마다 조사를 실시하는 기관은?"},{"b":"$66.5$점이다.","f":"$2022$년 조사 결과, 한국 성인의 금융이해력 총점은 몇 점인가?"},{"b":"평균보다 높다.","f":"$2022$년 한국 성인의 금융이해력 점수는 $OECD$ $20$개국 평균인 $63.0$점보다 높은가 낮은가?"},{"b":"금융행위와 금융태도 영역이다.","f":"우리나라 금융이해력 조사 항목 중 지식에 비해 점수가 상대적으로 낮게 나타난 영역은?"},{"b":"$30$대이다.","f":"우리나라 연령별 금융이해력 조사에서 가장 높은 점수를 기록한 세대는?"},{"b":"학교에서 직무 능력 개발에 치중하여 금융을 제대로 배운 적이 없기 때문이다.","f":"$20$대 청년층의 금융이해력이 낮은 주요 원인은 무엇인가?"},{"b":"약 $37.7\\%$이다.","f":"우리나라 성인 중 장기적인 재무목표를 보유하고 있는 비율은 약 몇 $\\%$인가?"},{"b":"친구, 가족, 지인의 추천이다.","f":"금융상품 선택 시 우리나라 사람들이 가장 많이 의존하는 정보원은?"},{"b":"입시 위주의 교육으로 인해 점수가 하락한다.","f":"초·중·고 경제이해력 조사 결과, 상급 학교로 진학할수록 점수는 어떻게 변화하는가?"},{"b":"$ELS$, 대체투자, 사모펀드 등이다.","f":"금융역량 등급 중 $A$등급($81$점 이상)을 받은 사람에게 추천되는 투자 상품은?"},{"b":"투자보다는 현재의 소비생활을 체크하고 개선하는 것이다.","f":"금융역량 등급 중 $D$등급($40$점 이하)을 받은 사람에게 가장 우선적으로 필요한 조치는?"},{"b":"모르는 것을 아는 척하는 태도이다.","f":"금융역량을 기르는 태도 중 가장 위험한 것으로 지목된 것은?"},{"b":"금융이다.","f":"금전융통(金錢融通)의 줄임말로, 돈의 흐름을 뜻하는 용어는?"},{"b":"종료, 즉 지불하여 채무를 갚는 것을 의미한다.","f":"프랑스어 'fin'에서 유래한 'Finance'라는 단어의 본래 의미는?"},{"b":"가치 저장물 기능이다.","f":"돈이 가진 세 가지 주요 기능은 교환 수단, 계산 단위, 그리고 무엇인가?"},{"b":"교환 수단 기능이다.","f":"재화나 서비스를 사고파는 대가로 돈이 사용되는 기능을 무엇이라 하는가?"},{"b":"계산 단위 기능이다.","f":"서로 다른 물건의 가치를 객관적인 수치로 비교할 수 있게 해주는 돈의 기능은?"},{"b":"수익성, 위험성, 유동성이다.","f":"돈의 가치 저장 수단을 선택할 때 고려해야 할 세 가지 기준은?"},{"b":"재산($Wealth$)이다.","f":"부자를 정의할 때 기준이 되는 '모든 가치저장물의 합'을 뜻하는 용어는?"},{"b":"황금만능주의 또는 배금주의이다.","f":"돈을 인생의 유일한 목표로 삼아 최대한 많이 확보하려는 가치관은?"},{"b":"사회적 합의물($Social\\ Consensus$)이다.","f":"돈은 본질적으로 경제 구성원들이 신뢰를 바탕으로 탄생시킨 무엇인가?"},{"b":"거래 수단인 돈이다.","f":"과거 물물교환 시대에 거래 상대방을 찾는 불편함을 해소하기 위해 등장한 것은?"},{"b":"언제나 평등하게 사용하는 보배라는 뜻이다.","f":"조선의 대표적 화폐인 '상평통보'의 이름에 담긴 뜻은?"},{"b":"머니($Money$)이다.","f":"로마인이 주노($Juno$) 여신 신전에서 돈을 주조한 것에서 유래한 영단어는?"},{"b":"화는 조개(물건)를, 폐는 옷감(비단)을 상징한다.","f":"화폐($貨幣$)라는 한자어에서 '화($貨$)'와 '폐($幣$)'가 각각 상징하는 물품은?"},{"b":"가치 변동성이 너무 크기 때문이다.","f":"암호화폐가 일상생활에서 통화로 사용되기 어려운 가장 결정적인 이유는?"},{"b":"블록체인 기술이다.","f":"암호화폐의 핵심 기술로, 거래 자료를 분산하여 저장하는 기술은?"},{"b":"스웨덴($Riksbank$, $1668$년)이다.","f":"세계 최초의 중앙은행은 어느 나라에서 설립되었는가?"},{"b":"물가가 상승할 때 하락한다.","f":"화폐의 실제 가치인 구매력은 무엇이 상승할 때 하락하는가?"},{"b":"금태환 정지 선언이다.","f":"$1971$년 미국 닉슨 대통령이 선언하여 달러와 금의 교환을 중단한 조치는?"},{"b":"법화($Legal\\ Tender$)이다.","f":"국가가 법적으로 통용력을 부여하여 모든 거래에 무제한 통용되는 화폐를 무엇이라 하는가?"},{"b":"기축통화($Key\\ Currency$)이다.","f":"국제 결제에서 보편적으로 인정되어 거래에 많이 이용되는 화폐를 무엇이라 하는가?"},{"b":"미국 달러, $EU$ 유로, 일본 엔, 영국 파운드이다.","f":"현재 세계 $4$대 기축통화로 꼽히는 화폐들을 나열하시오."},{"b":"주조차익($Seigniorage$)이다.","f":"화폐의 액면가에서 제조 원가를 뺀 차익으로, 화폐 발행 주체가 얻는 이익은?"},{"b":"돈의 가격이 아닌 돈의 '사용료'로 정의된다.","f":"돈의 시간가치 관점에서 이자는 무엇에 대한 비용으로 정의되는가?"},{"b":"증식이라고 한다.","f":"현재의 돈을 미래의 가치로 계산하는 과정을 무엇이라 하는가?"},{"b":"할인이라고 한다.","f":"미래의 돈을 현재의 가치로 환산하는 과정을 무엇이라 하는가?"},{"b":"실질적인 채무를 줄여주는 주조차익 효과가 발생한다.","f":"돈의 가치 하락, 즉 인플레이션이 발생하면 화폐 발행자인 정부에게는 어떤 이득이 발생하는가?"},{"b":"표류하는 인생이다.","f":"재무목표를 세우지 않고 사는 삶을 비유한 표현은?"},{"b":"금융행위 항목이다.","f":"금융이해력 산출 시 금융지식($35\\%$), 금융행위($45\\%$), 금융태도($20\\%$) 중 비중이 가장 큰 항목은?"},{"b":"당백전이다.","f":"조선시대 대원군이 발행했으나 실질 가치가 낮아 경제 혼란을 야기한 화폐는?"},{"b":"전자화폐($Electric\\ Money$)이다.","f":"화폐의 진화 과정에서 신용카드 이후에 나타난 형태는?"},{"b":"소비, 카드 사용, 저축, 보험 등이다.","f":"금융생활 교육이 거시경제 교육보다 중요하게 다루어야 할 구체적 실무 요소들은?"}];
+        let currentIndex = 0;
+        let isFlipped = false;
+
+        const cardElement = document.getElementById('card');
+        const frontText = document.getElementById('front-text');
+        const backText = document.getElementById('back-text');
+        const progressFill = document.getElementById('progress-fill');
+        const progressText = document.getElementById('progress-text');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+
+        function renderCard() {
+            if (isFlipped) {
+                cardElement.classList.remove('flipped');
+                isFlipped = false;
+                setTimeout(updateContent, 200); 
+            } else {
+                updateContent();
+            }
+        }
+
+        function updateContent() {
+             const card = flashcards[currentIndex];
+            frontText.textContent = card.f;
+            backText.textContent = card.b;
+            
+            const progress = ((currentIndex + 1) / flashcards.length) * 100;
+            progressFill.style.width = progress + '%';
+            progressText.textContent = `${currentIndex + 1} / ${flashcards.length}`;
+
+            prevBtn.disabled = currentIndex === 0;
+            nextBtn.disabled = currentIndex === flashcards.length - 1;
+        }
+
+        function flipCard() {
+            isFlipped = !isFlipped;
+            cardElement.classList.toggle('flipped');
+        }
+
+        function prevCard(e) {
+            e.stopPropagation();
+            if (currentIndex > 0) {
+                currentIndex--;
+                renderCard();
+            }
+        }
+
+        function nextCard(e) {
+            e.stopPropagation();
+            if (currentIndex < flashcards.length - 1) {
+                currentIndex++;
+                renderCard();
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                flipCard();
+            } else if (e.code === 'ArrowLeft') {
+                if (currentIndex > 0) {
+                    currentIndex--;
+                    renderCard();
+                }
+            } else if (e.code === 'ArrowRight') {
+                if (currentIndex < flashcards.length - 1) {
+                    currentIndex++;
+                    renderCard();
+                }
+            }
+        });
+
+        updateContent();
+    </script>
+</body>
+</html>
